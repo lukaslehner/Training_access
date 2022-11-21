@@ -8,12 +8,11 @@ data_out <- paste0(home,"/Data")
 setwd("./Training_access")
 
 # data path for local data
-data_path = "B:/Randomization/2022-07"
+data_path = "B:/Randomization/2022-11"
 
 #load data
-#everybody GF3Q,GF4Q,GF1J
-file_used=c("20220711_Datenlieferung_1-2.csv")
-wave_1_raw=paste(data_path,file_used, sep = "/") %>% 
+file_used=c("Datenlieferung_1-3.csv")
+wave_3_raw=paste(data_path,file_used, sep = "/") %>% 
   read.csv(., sep=";" , dec = ",")
 
 #check with pilot people
@@ -26,20 +25,32 @@ file_used = c("penr_list.xlsx")
 penrlist = paste("B:",file_used, sep = "/") %>% 
   read_excel()
 
-double<-inner_join(wave_1_raw,pilot_penr,by="penr")
-wave_1_raw<-anti_join(wave_1_raw,double, by="penr")
+double<-inner_join(wave_3_raw,pilot_penr,by="penr")
+double1<-inner_join(wave_3_raw,penrlist,by=c("penr"="PENR"))
+test<-anti_join(double,double1,by="penr")
+#no matter which list, the same 167 need to be kicked out
+wave_3_raw<-anti_join(wave_3_raw,double, by="penr")
 
-double1<-inner_join(wave_1_raw,penrlist,by=c("penr"="PENR"))
-rm(double, pilot_penr)
-#exclude same 1261, no matter which list I use
+#previous waves
+file_used = c("wave_1_assigned.xlsx")
+wave1_penr = paste("B:/Randomization/2022-07/",file_used, sep = "/") %>% 
+  read_excel()%>%select(penr)
 
-problem<-double%>%select(penr)
-problem$error<-"wave1error"
-#PROBLEM! excluded based on the thought that they sent us PSTkeys. excluded 5, but should have excluded 1261(1 overlaps)-->set a marker in dataset and think about what to do with them (got the treatment twice)
+double<-inner_join(wave_3_raw,wave1_penr,by="penr")
+#noone from first wave
+
+file_used = c("wave_2_assigned.xlsx")
+wave2_penr = paste("B:/Randomization/2022-09/",file_used, sep = "/") %>% 
+  read_excel()%>%select(penr)
+
+double<-inner_join(wave_3_raw,wave2_penr,by="penr")
+#noone from 2nd wave
+
+rm(double, test, double1, pilot_penr,penrlist,wave1_penr,wave2_penr)
 
 # aggregate variables for stratified randomisation
-wave_1 =
-  wave_1_raw  %>%
+wave_3 =
+  wave_3_raw  %>%
   mutate(
     penr = as.integer(penr),
     region=case_when(rgs==301 |rgs==316 | rgs==317|rgs==326|rgs==328|rgs==3310|rgs==333~"Mo",
@@ -60,10 +71,10 @@ wave_1 =
     )
 
 #Korrekturen
-wave_1$education[wave_1$ausb=="XX"]<-NA 
-wave_1$nationality_AUT[wave_1$nation=="X"]<-NA 
+wave_3$education[wave_3$ausb=="XX"]<-NA 
+wave_3$nationality_AUT[wave_3$nation=="X"]<-NA 
 
-wave_1=wave_1%>%select(personal_id,
+wave_3=wave_3%>%select(penr,
                 nationality_AUT, 
                 male,
                 agegr,
@@ -72,29 +83,29 @@ wave_1=wave_1%>%select(personal_id,
                 education, 
                 education, 
                 German_ok,
-                unemp_dur)%>%filter(!is.na(education)&!is.na(nationality_AUT))
-#lose 25 observations here
+                unemp_dur)%>%filter(!is.na(education))
+#lose 4 observations here
 
 #import isco and recode
 library(readxl)
 file_used=c("isco-help.xlsx")
-isco<-paste("A:", file_used, sep = "/") %>% 
+isco<-paste(home,"/helpfiles/", file_used, sep = "/") %>% 
   read_excel( col_types = c("numeric", "numeric", "text") )
 
 isco$beruf<-isco$BERUF_6
 isco$BERUF_6<-NULL
 
-temp<-left_join(wave_1_raw,isco,by=c("beruf"),copy=TRUE)
-temp$personal_id = as.integer(temp$penr)
-temp<-temp%>%select(personal_id,beruf,ISCO08_1)
+temp<-left_join(wave_3_raw,isco,by=c("beruf"),copy=TRUE)
+temp$penr = as.integer(temp$penr)
+temp<-temp%>%select(penr,beruf,ISCO08_1)
 
-wave_1<-left_join(wave_1,temp,by=c("personal_id"))
-summary(wave_1$ISCO08_1)
+wave_3<-left_join(wave_3,temp,by="penr")
+summary(wave_3$ISCO08_1)
 
 rm(temp,isco)
 #write
 
-wave_1 %>% 
+wave_3 %>% 
   readr::write_csv(paste(data_path,
-                  "wave_1.csv",
+                  "wave_3.csv",
                   sep = "/"))

@@ -33,7 +33,7 @@ library(ggplot2)
 #no observations per strata
 wave_1<-wave_1 %>% 
   group_by(strata) %>%
-  mutate(no_rows = length(personal_id))%>%ungroup()
+  mutate(no_rows = length(penr))%>%ungroup()
 
 wave_1$strata = with(wave_1, reorder(strata, no_rows, median))
 wave_1 %>% filter(!is.na(strata))%>%
@@ -55,29 +55,32 @@ tab1 <- tableby(group_nr ~ male_f + agegr_f+ educ_f+region_f+as.factor(nationali
 summary(tab1)
 setwd(data_out)
 
-setwd(data_out)
 capture.output(summary(tab1), file="Test_w1.md")
 
 ## Convert R Markdown Table to LaTeX
 require(knitr)
 require(rmarkdown)
-render("Test_w1.md", pdf_document(keep_tex=FALSE))
+render("Test_w1.md", pdf_document(keep_tex=TRUE))
 setwd("..")
 
 # exporting files for PES; one for each group of newsletters
 library("writexl")
 
-control<-wave_1%>%ungroup()%>%filter(group_nr=="T1")%>%select(personal_id)
-Vleduc<-wave_1%>%ungroup()%>%filter(group_nr=="T2" & educ_f==0)%>%select(personal_id)
-Vheduc<-wave_1%>%ungroup()%>%filter(group_nr=="T2" & educ_f==1)%>%select(personal_id)
-Vinfleduc<-wave_1%>%ungroup()%>%filter(group_nr=="T3" & educ_f==0)%>%select(personal_id)
-Vinfheduc<-wave_1%>%ungroup()%>%filter(group_nr=="T3" & educ_f==1)%>%select(personal_id)
+control<-wave_1%>%ungroup()%>%filter(group_nr=="T1")%>%select(penr)
+Vleduc<-wave_1%>%ungroup()%>%filter(group_nr=="T2" & educ_f==0)%>%select(penr)
+Vheduc<-wave_1%>%ungroup()%>%filter(group_nr=="T2" & educ_f==1)%>%select(penr)
+Vinfleduc<-wave_1%>%ungroup()%>%filter(group_nr=="T3" & educ_f==0)%>%select(penr)
+Vinfheduc<-wave_1%>%ungroup()%>%filter(group_nr=="T3" & educ_f==1)%>%select(penr)
 
 write_xlsx(control,paste(data_path,"wave_1_Control.xlsx", sep="/"))
 write_xlsx(Vleduc,paste(data_path,"wave_1_Voucher_loweduc.xlsx", sep="/"))
 write_xlsx(Vheduc,paste(data_path,"wave_1_Voucher_higheduc.xlsx", sep="/"))
 write_xlsx(Vinfleduc,paste(data_path,"wave_1_Voucherinfo_loweduc.xlsx", sep="/"))
 write_xlsx(Vinfheduc,paste(data_path,"wave_1_Voucherinfo_higheduc.xlsx", sep="/"))
+
+#add marker from those who erronously received treatment twice (who were already in pilot intervention)
+wave_1<-left_join(wave_1,problem,by="penr")
+wave_1$error[is.na(wave_1$error)]<-0
 
 wave_1%>%select(-c(beruf,no_rows,education,agegr,male,region,unemp_dur))%>%
   write_xlsx(., paste(data_path,"wave_1_assigned.xlsx",sep="/"))
