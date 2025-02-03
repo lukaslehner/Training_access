@@ -6,6 +6,8 @@ home <- getwd()
 data_out <- paste0(home,"/Data-rep")
 setwd("./Training_access")
 
+data_path = "B:/"
+
 # 1- Wave 1: July-22 Stratified randomization  -------- 
 
 # Data preparation for randomization
